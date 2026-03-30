@@ -1030,6 +1030,7 @@
 <!-- Hidden File Inputs -->
 <input type="file" id="file-input" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac,.aac,.opus,.wma" multiple style="display:none">
 <input type="file" id="folder-input" accept="audio/*" webkitdirectory style="display:none">
+<audio id="player-audio" preload="auto" playsinline webkit-playsinline x-webkit-airplay="allow" style="display:none"></audio>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 <script>
@@ -1114,10 +1115,18 @@ const state = {
   shuffle: false,
   repeat: 'off',         // 'off' | 'all' | 'one'
   currentView: 'library',
-  audio: (() => { const a = new Audio(); a.preload = 'auto'; return a; })(),
+  audio: document.getElementById('player-audio'),
   artBlobURLs: new Map(), // trackId → blobURL
   audioBlobURL: null,     // current audio blob URL
 };
+
+const IS_APPLE_MOBILE_AUDIO = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const ALLOW_REALTIME_FX = !IS_APPLE_MOBILE_AUDIO;
+
+function isBackgroundedApplePlayback() {
+  return IS_APPLE_MOBILE_AUDIO && document.visibilityState === 'hidden';
+}
 
 function currentTrack() {
   const idx = state.queue[state.currentQueueIdx];
@@ -1149,6 +1158,7 @@ function _setAudioParam(param, value, timeConstant = 0.035) {
 }
 
 function ensureAudioContext() {
+  if (!ALLOW_REALTIME_FX) return;
   if (_audioCtx) { if (_audioCtx.state === 'suspended') _audioCtx.resume(); return; }
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -1258,6 +1268,7 @@ function saveEQState() {
 }
 
 function applyEQ(s) {
+  if (!ALLOW_REALTIME_FX) return;
   if (!_audioCtx || !_eqLow) return;
   const clamp = v => Math.max(-12, Math.min(12, v));
   const boosts = [s.subBass, s.bass, s.mid, s.presence, s.air].map(v => Math.max(0, clamp(v)));
@@ -1390,7 +1401,7 @@ function loadTrack(queueIdx, autoplay) {
   state.currentQueueIdx = queueIdx;
   const track = currentTrack();
   if (!track) return;
-  if (autoplay) ensureAudioContext();
+  if (autoplay && ALLOW_REALTIME_FX) ensureAudioContext();
   state.activeTrackId = track.id;
 
   state.audio.pause();
@@ -1414,9 +1425,11 @@ function loadTrack(queueIdx, autoplay) {
   state.audio.src = state.audioBlobURL;
   state.audio.load();
 
-  updateNowPlayingUI();
-  updateMiniPlayer();
-  highlightCurrentTrack();
+  if (!isBackgroundedApplePlayback()) {
+    updateNowPlayingUI();
+    updateMiniPlayer();
+    highlightCurrentTrack();
+  }
   updateMediaSession(track);
 
   if (autoplay) {
@@ -1440,7 +1453,7 @@ function loadTrack(queueIdx, autoplay) {
 
 function play() {
   if (!currentTrack()) return;
-  ensureAudioContext(); // must be called from a user gesture to unlock iOS AudioContext
+  if (ALLOW_REALTIME_FX) ensureAudioContext(); // keep direct audio on iPhone for stable background playback
   state.audio.play().then(() => {
     const track = currentTrack();
     if (!track || state.activeTrackId !== track.id) return;
@@ -1462,6 +1475,7 @@ function togglePlay() {
 }
 
 function syncCurrentTrackUI() {
+  if (isBackgroundedApplePlayback()) return;
   updateNowPlayingUI();
   updateMiniPlayer();
   highlightCurrentTrack();
@@ -1535,6 +1549,7 @@ state.audio.addEventListener('playing', () => {
 state.audio.addEventListener('ended', () => nextTrack(false));
 
 state.audio.addEventListener('timeupdate', () => {
+  if (isBackgroundedApplePlayback()) return;
   updateProgress();
   updatePositionState();
 });
@@ -1543,6 +1558,7 @@ state.audio.addEventListener('loadedmetadata', () => {
   // Update duration in state/DB
   const track = currentTrack();
   if (track && state.activeTrackId === track.id && state.audio.currentSrc === state.audioBlobURL) {
+    if (isBackgroundedApplePlayback()) return;
     track.duration = state.audio.duration;
     updateTimeTotalLabel();
     updatePositionState();
@@ -1560,6 +1576,17 @@ state.audio.addEventListener('loadedmetadata', () => {
 state.audio.addEventListener('error', () => {
   showToast('Error playing track', 'error');
   nextTrack(false);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (!ALLOW_REALTIME_FX || !_audioCtx) return;
+  if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+});
+
+window.addEventListener('pageshow', () => {
+  if (!ALLOW_REALTIME_FX || !_audioCtx) return;
+  if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
 });
 
 // Default volume is now set via _gainNode.gain.value = 0.8 in ensureAudioContext()
@@ -1583,6 +1610,7 @@ function updateMediaSession(track) {
   navigator.mediaSession.setActionHandler('pause', pause);
   navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
   navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack(true));
+  if (IS_APPLE_MOBILE_AUDIO) return;
   navigator.mediaSession.setActionHandler('seekto', e => {
     state.audio.currentTime = e.seekTime;
   });
@@ -1600,6 +1628,7 @@ function updateMediaSessionPlayState() {
 }
 
 function updatePositionState() {
+  if (IS_APPLE_MOBILE_AUDIO) return;
   if (!('mediaSession' in navigator)) return;
   try {
     if (state.audio.duration && isFinite(state.audio.duration)) {
@@ -2120,6 +2149,12 @@ document.getElementById('eq-toggle-compressor').addEventListener('click', functi
   // Load persisted EQ before any audio interaction
   loadEQState();
   syncEQUI();
+  if (!ALLOW_REALTIME_FX) {
+    const eqSubtitle = document.getElementById('eq-subtitle');
+    if (eqSubtitle) {
+      eqSubtitle.textContent = 'On iPhone, background playback uses direct audio for stability. Realtime EQ is limited to avoid stuck or looping playback.';
+    }
+  }
 
   try {
     const tracks = await getAllTracks();
