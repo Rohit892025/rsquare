@@ -1108,6 +1108,8 @@ const state = {
   tracks: [],
   queue: [],             // array of indices into state.tracks
   currentQueueIdx: 0,
+  loadToken: 0,
+  activeTrackId: null,
   isPlaying: false,
   shuffle: false,
   repeat: 'off',         // 'off' | 'all' | 'one'
@@ -1384,10 +1386,17 @@ function buildQueue(startTrackIndex) {
 // Playback Engine
 // ══════════════════════════════════════════════════════════════════════════════
 function loadTrack(queueIdx, autoplay) {
+  const loadToken = ++state.loadToken;
   state.currentQueueIdx = queueIdx;
   const track = currentTrack();
   if (!track) return;
   if (autoplay) ensureAudioContext();
+  state.activeTrackId = track.id;
+
+  state.audio.pause();
+  state.isPlaying = false;
+  updatePlayPauseIcons();
+  updateMediaSessionPlayState();
 
   // Revoke previous audio blob
   if (state.audioBlobURL) {
@@ -1412,10 +1421,12 @@ function loadTrack(queueIdx, autoplay) {
 
   if (autoplay) {
     state.audio.play().then(() => {
+      if (loadToken !== state.loadToken || state.activeTrackId !== track.id) return;
       state.isPlaying = true;
       updatePlayPauseIcons();
       updateMediaSessionPlayState();
     }).catch(err => {
+      if (loadToken !== state.loadToken || state.activeTrackId !== track.id) return;
       if (err.name !== 'AbortError') {
         showToast('Playback error — tap play to try again', 'error');
       }
@@ -1431,6 +1442,8 @@ function play() {
   if (!currentTrack()) return;
   ensureAudioContext(); // must be called from a user gesture to unlock iOS AudioContext
   state.audio.play().then(() => {
+    const track = currentTrack();
+    if (!track || state.activeTrackId !== track.id) return;
     state.isPlaying = true;
     updatePlayPauseIcons();
     updateMediaSessionPlayState();
@@ -1446,6 +1459,14 @@ function pause() {
 
 function togglePlay() {
   if (state.isPlaying) pause(); else play();
+}
+
+function syncCurrentTrackUI() {
+  updateNowPlayingUI();
+  updateMiniPlayer();
+  highlightCurrentTrack();
+  const track = currentTrack();
+  if (track) updateMediaSession(track);
 }
 
 function nextTrack(userInitiated) {
@@ -1490,6 +1511,27 @@ function prevTrack() {
   }
 }
 
+state.audio.addEventListener('play', () => {
+  const track = currentTrack();
+  if (!track || state.activeTrackId !== track.id) return;
+  state.isPlaying = true;
+  updatePlayPauseIcons();
+  updateMediaSessionPlayState();
+});
+
+state.audio.addEventListener('pause', () => {
+  state.isPlaying = false;
+  updatePlayPauseIcons();
+  updateMediaSessionPlayState();
+});
+
+state.audio.addEventListener('playing', () => {
+  const track = currentTrack();
+  if (!track || state.activeTrackId !== track.id) return;
+  syncCurrentTrackUI();
+  updatePositionState();
+});
+
 state.audio.addEventListener('ended', () => nextTrack(false));
 
 state.audio.addEventListener('timeupdate', () => {
@@ -1500,7 +1542,7 @@ state.audio.addEventListener('timeupdate', () => {
 state.audio.addEventListener('loadedmetadata', () => {
   // Update duration in state/DB
   const track = currentTrack();
-  if (track) {
+  if (track && state.activeTrackId === track.id && state.audio.currentSrc === state.audioBlobURL) {
     track.duration = state.audio.duration;
     updateTimeTotalLabel();
     updatePositionState();
