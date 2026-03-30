@@ -255,10 +255,22 @@
 
     /* ── Now Playing View ────────────────────────────────────────────────── */
     #now-playing-view {
-      padding: 16px 24px 24px;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    #np-scrollable {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       display: flex;
       flex-direction: column;
       align-items: center;
+      padding: 16px 24px 24px;
       gap: 0;
     }
 
@@ -815,28 +827,29 @@
 
     <!-- Now Playing View -->
     <div id="now-playing-view" class="view">
-      <div id="np-art-wrapper">
-        <svg class="no-art-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-        </svg>
-        <img id="np-art" src="" alt="" style="display:none">
-      </div>
-
-      <div id="np-info">
-        <div id="np-title">No Track Selected</div>
-        <div id="np-artist">—</div>
-      </div>
-
-      <div id="progress-container">
-        <div id="progress-bar-track">
-          <div id="progress-fill"></div>
-          <div id="progress-knob"></div>
+      <div id="np-scrollable">
+        <div id="np-art-wrapper">
+          <svg class="no-art-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+          </svg>
+          <img id="np-art" src="" alt="" style="display:none">
         </div>
-        <div id="time-labels">
-          <span id="time-current">0:00</span>
-          <span id="time-total">0:00</span>
+
+        <div id="np-info">
+          <div id="np-title">No Track Selected</div>
+          <div id="np-artist">—</div>
         </div>
-      </div>
+
+        <div id="progress-container">
+          <div id="progress-bar-track">
+            <div id="progress-fill"></div>
+            <div id="progress-knob"></div>
+          </div>
+          <div id="time-labels">
+            <span id="time-current">0:00</span>
+            <span id="time-total">0:00</span>
+          </div>
+        </div>
 
       <div id="transport">
         <button class="ctrl-btn ctrl-btn-sm" id="btn-shuffle" title="Shuffle" aria-label="Shuffle">
@@ -935,6 +948,7 @@
           <button class="eq-toggle-btn" id="eq-toggle-exciter" aria-pressed="false">Bass Exciter</button>
           <button class="eq-toggle-btn" id="eq-toggle-compressor" aria-pressed="false">Compressor</button>
         </div>
+      </div>
       </div>
     </div>
   </div>
