@@ -780,6 +780,11 @@
           </div>
         </div>
       </div>
+      <button class="icon-btn" id="btn-refresh" title="Refresh App" aria-label="Refresh App">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36"/>
+        </svg>
+      </button>
       <button class="icon-btn" id="btn-clear" title="Clear Library" aria-label="Clear Library">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
@@ -2046,6 +2051,11 @@ document.getElementById('eq-toggle-compressor').addEventListener('click', functi
     const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     versionTimestamp.textContent = `${date} · ${time}`;
   }
+  
+  // Refresh button handler
+  document.getElementById('btn-refresh')?.addEventListener('click', () => {
+    location.reload();
+  });
 })();
 
 // Suppress unused var warning for icon refs
