@@ -899,7 +899,7 @@ const state = {
   shuffle: false,
   repeat: 'off',         // 'off' | 'all' | 'one'
   currentView: 'library',
-  audio: new Audio(),
+  audio: (() => { const a = new Audio(); a.preload = 'auto'; return a; })(),
   artBlobURLs: new Map(), // trackId → blobURL
   audioBlobURL: null,     // current audio blob URL
 };
@@ -910,9 +910,52 @@ function currentTrack() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// Web Audio API — GainNode for volume + iOS AudioContext unlock
+// ══════════════════════════════════════════════════════════════════════════════
+let _audioCtx  = null;
+let _gainNode  = null;
+let _srcNode   = null;
+
+function ensureAudioContext() {
+  if (_audioCtx) {
+    // Resume if suspended (iOS pauses context when app goes to background)
+    if (_audioCtx.state === 'suspended') _audioCtx.resume();
+    return;
+  }
+  try {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    _gainNode = _audioCtx.createGain();
+    _gainNode.gain.value = 0.8;
+    _gainNode.connect(_audioCtx.destination);
+    // Route the <audio> element through the gain node
+    _srcNode = _audioCtx.createMediaElementSource(state.audio);
+    _srcNode.connect(_gainNode);
+  } catch (_) {
+    // Web Audio API unavailable — fall back to direct audio.volume
+    _audioCtx = null;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Metadata Extraction
 // ══════════════════════════════════════════════════════════════════════════════
 const AUDIO_EXTS = /\.(mp3|m4a|wav|ogg|flac|aac|opus|wma)$/i;
+
+// MIME type map — tells iOS which hardware decoder to use (critical for M4A/AAC)
+const AUDIO_MIME = {
+  mp3:  'audio/mpeg',
+  m4a:  'audio/mp4',
+  aac:  'audio/aac',
+  wav:  'audio/wav',
+  ogg:  'audio/ogg',
+  flac: 'audio/flac',
+  opus: 'audio/ogg; codecs=opus',
+  wma:  'audio/x-ms-wma',
+};
+function mimeForFile(fileName) {
+  const ext = (fileName.split('.').pop() || '').toLowerCase();
+  return AUDIO_MIME[ext] || '';
+}
 
 function nameWithoutExt(name) {
   return name.replace(/\.[^/.]+$/, '');
@@ -929,6 +972,7 @@ function extractMetadata(file) {
       artData: null,
       duration: 0,
       fileName: file.name,
+      mimeType: mimeForFile(file.name),
     };
 
     const finish = (meta, audioData) => resolve({ ...defaults, ...meta, audioData });
@@ -1017,7 +1061,7 @@ function loadTrack(queueIdx, autoplay) {
     return;
   }
 
-  const blob = new Blob([track.audioData]);
+  const blob = new Blob([track.audioData], { type: track.mimeType || '' });
   state.audioBlobURL = URL.createObjectURL(blob);
   state.audio.src = state.audioBlobURL;
   state.audio.load();
@@ -1046,6 +1090,7 @@ function loadTrack(queueIdx, autoplay) {
 
 function play() {
   if (!currentTrack()) return;
+  ensureAudioContext(); // must be called from a user gesture to unlock iOS AudioContext
   state.audio.play().then(() => {
     state.isPlaying = true;
     updatePlayPauseIcons();
@@ -1136,7 +1181,7 @@ state.audio.addEventListener('error', () => {
   nextTrack(false);
 });
 
-state.audio.volume = 0.8;
+// Default volume is now set via _gainNode.gain.value = 0.8 in ensureAudioContext()
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Media Session API
@@ -1595,9 +1640,11 @@ document.getElementById('btn-repeat').addEventListener('click', () => {
   showToast(labels[state.repeat]);
 });
 
-// Volume
+// Volume — routed through GainNode when Web Audio is active, fallback to audio.volume
 document.getElementById('volume-slider').addEventListener('input', e => {
-  state.audio.volume = e.target.value / 100;
+  const v = e.target.value / 100;
+  if (_gainNode) _gainNode.gain.value = v;
+  else state.audio.volume = v;
 });
 
 // Mini Player → switch to Now Playing
