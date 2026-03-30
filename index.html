@@ -655,25 +655,39 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
 
-    /* ── EQ Panel ─────────────────────────────────────────────────────────── */
-    #btn-eq.active { color: var(--accent); }
-
+    /* ── EQ View ──────────────────────────────────────────────────────────── */
+    #eq-view {
+      padding: 20px 16px 28px;
+    }
+    #eq-shell {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    #eq-header {
+      padding: 2px 4px 0;
+    }
+    #eq-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+    #eq-subtitle {
+      margin-top: 6px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text2);
+    }
     #eq-panel {
       width: 100%;
-      overflow: hidden;
-      max-height: 0;
-      opacity: 0;
-      transition: max-height 0.32s ease, opacity 0.22s ease, margin-top 0.22s ease;
-      margin-top: 0;
-      padding: 0 16px;
-      background: var(--bg);
-      scroll-margin-bottom: calc(var(--bottom-h) + 24px);
-    }
-    #eq-panel.open {
-      max-height: 500px;
-      opacity: 1;
-      margin-top: 12px;
-      overflow-y: auto;
+      padding: 18px 16px 22px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.28);
     }
 
     #eq-presets {
@@ -889,15 +903,6 @@
           </svg>
           <span id="repeat-badge">1</span>
         </button>
-        <button class="ctrl-btn ctrl-btn-sm" id="btn-eq" title="Equalizer" aria-label="Equalizer" aria-expanded="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="4"  y1="6"  x2="4"  y2="18"/>
-            <line x1="8"  y1="3"  x2="8"  y2="21"/>
-            <line x1="12" y1="7"  x2="12" y2="17"/>
-            <line x1="16" y1="4"  x2="16" y2="20"/>
-            <line x1="20" y1="8"  x2="20" y2="16"/>
-          </svg>
-        </button>
       </div>
 
       <div id="volume-row">
@@ -909,48 +914,57 @@
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
         </svg>
       </div>
-
-      <!-- EQ Panel -->
-      <div id="eq-panel" aria-hidden="true">
-        <div id="eq-presets">
-          <button class="eq-preset-btn active" data-preset="flat">Flat</button>
-          <button class="eq-preset-btn" data-preset="bass">Bass</button>
-          <button class="eq-preset-btn" data-preset="headphones">Headphones</button>
-          <button class="eq-preset-btn" data-preset="vocal">Vocal</button>
-          <button class="eq-preset-btn" data-preset="punjabi">Punjabi</button>
-        </div>
-        <div class="eq-sliders">
-          <div class="eq-slider-row">
-            <label class="eq-label">Sub Bass</label>
-            <input type="range" class="eq-slider" id="eq-subBass" min="-12" max="12" step="0.5" value="0">
-            <span class="eq-val" id="eq-val-subBass">0</span>
-          </div>
-          <div class="eq-slider-row">
-            <label class="eq-label">Bass</label>
-            <input type="range" class="eq-slider" id="eq-bass" min="-12" max="12" step="0.5" value="0">
-            <span class="eq-val" id="eq-val-bass">0</span>
-          </div>
-          <div class="eq-slider-row">
-            <label class="eq-label">Mid</label>
-            <input type="range" class="eq-slider" id="eq-mid" min="-12" max="12" step="0.5" value="0">
-            <span class="eq-val" id="eq-val-mid">0</span>
-          </div>
-          <div class="eq-slider-row">
-            <label class="eq-label">Presence</label>
-            <input type="range" class="eq-slider" id="eq-presence" min="-12" max="12" step="0.5" value="0">
-            <span class="eq-val" id="eq-val-presence">0</span>
-          </div>
-          <div class="eq-slider-row">
-            <label class="eq-label">Air</label>
-            <input type="range" class="eq-slider" id="eq-air" min="-12" max="12" step="0.5" value="0">
-            <span class="eq-val" id="eq-val-air">0</span>
-          </div>
-        </div>
-        <div class="eq-toggles">
-          <button class="eq-toggle-btn" id="eq-toggle-exciter" aria-pressed="false">Bass Exciter</button>
-          <button class="eq-toggle-btn" id="eq-toggle-compressor" aria-pressed="false">Compressor</button>
-        </div>
       </div>
+    </div>
+
+    <!-- EQ View -->
+    <div id="eq-view" class="view">
+      <div id="eq-shell">
+        <div id="eq-header">
+          <div id="eq-title">Equalizer</div>
+          <div id="eq-subtitle">Tune bass, vocals, and overall color without crowding the Now Playing screen.</div>
+        </div>
+
+        <div id="eq-panel">
+          <div id="eq-presets">
+            <button class="eq-preset-btn active" data-preset="flat">Flat</button>
+            <button class="eq-preset-btn" data-preset="bass">Bass</button>
+            <button class="eq-preset-btn" data-preset="headphones">Headphones</button>
+            <button class="eq-preset-btn" data-preset="vocal">Vocal</button>
+            <button class="eq-preset-btn" data-preset="punjabi">Punjabi</button>
+          </div>
+          <div class="eq-sliders">
+            <div class="eq-slider-row">
+              <label class="eq-label">Sub Bass</label>
+              <input type="range" class="eq-slider" id="eq-subBass" min="-12" max="12" step="0.5" value="0">
+              <span class="eq-val" id="eq-val-subBass">0</span>
+            </div>
+            <div class="eq-slider-row">
+              <label class="eq-label">Bass</label>
+              <input type="range" class="eq-slider" id="eq-bass" min="-12" max="12" step="0.5" value="0">
+              <span class="eq-val" id="eq-val-bass">0</span>
+            </div>
+            <div class="eq-slider-row">
+              <label class="eq-label">Mid</label>
+              <input type="range" class="eq-slider" id="eq-mid" min="-12" max="12" step="0.5" value="0">
+              <span class="eq-val" id="eq-val-mid">0</span>
+            </div>
+            <div class="eq-slider-row">
+              <label class="eq-label">Presence</label>
+              <input type="range" class="eq-slider" id="eq-presence" min="-12" max="12" step="0.5" value="0">
+              <span class="eq-val" id="eq-val-presence">0</span>
+            </div>
+            <div class="eq-slider-row">
+              <label class="eq-label">Air</label>
+              <input type="range" class="eq-slider" id="eq-air" min="-12" max="12" step="0.5" value="0">
+              <span class="eq-val" id="eq-val-air">0</span>
+            </div>
+          </div>
+          <div class="eq-toggles">
+            <button class="eq-toggle-btn" id="eq-toggle-exciter" aria-pressed="false">Bass Exciter</button>
+            <button class="eq-toggle-btn" id="eq-toggle-compressor" aria-pressed="false">Compressor</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -992,6 +1006,14 @@
         <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
       </svg>
       Now Playing
+    </button>
+    <button class="nav-tab" data-view="eq">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="6" x2="4" y2="18"/><line x1="8" y1="3" x2="8" y2="21"/>
+        <line x1="12" y1="7" x2="12" y2="17"/><line x1="16" y1="4" x2="16" y2="20"/>
+        <line x1="20" y1="8" x2="20" y2="16"/>
+      </svg>
+      EQ
     </button>
   </nav>
 </div>
@@ -1705,6 +1727,7 @@ function switchView(view) {
   state.currentView = view;
   document.getElementById('library-view').classList.toggle('active', view === 'library');
   document.getElementById('now-playing-view').classList.toggle('active', view === 'nowplaying');
+  document.getElementById('eq-view').classList.toggle('active', view === 'eq');
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.view === view);
   });
@@ -1978,25 +2001,6 @@ function syncEQUI() {
   compBtn.classList.toggle('active', eqState.compressor);
   compBtn.setAttribute('aria-pressed', String(eqState.compressor));
 }
-
-function setEQPanelOpen(open) {
-  const panel = document.getElementById('eq-panel');
-  const btn = document.getElementById('btn-eq');
-  panel.classList.toggle('open', open);
-  panel.setAttribute('aria-hidden', String(!open));
-  btn.classList.toggle('active', open);
-  btn.setAttribute('aria-expanded', String(open));
-  if (!open) return;
-  requestAnimationFrame(() => {
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  });
-}
-
-// EQ toggle button
-document.getElementById('btn-eq').addEventListener('click', () => {
-  const panel = document.getElementById('eq-panel');
-  setEQPanelOpen(!panel.classList.contains('open'));
-});
 
 // Preset pills
 document.getElementById('eq-presets').addEventListener('click', e => {
