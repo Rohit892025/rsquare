@@ -660,18 +660,20 @@
 
     #eq-panel {
       width: 100%;
-      overflow-y: auto;
+      overflow: hidden;
       max-height: 0;
       opacity: 0;
       transition: max-height 0.32s ease, opacity 0.22s ease, margin-top 0.22s ease;
       margin-top: 0;
       padding: 0 16px;
       background: var(--bg);
+      scroll-margin-bottom: calc(var(--bottom-h) + 24px);
     }
     #eq-panel.open {
       max-height: 500px;
       opacity: 1;
       margin-top: 12px;
+      overflow-y: auto;
     }
 
     #eq-presets {
@@ -1977,14 +1979,23 @@ function syncEQUI() {
   compBtn.setAttribute('aria-pressed', String(eqState.compressor));
 }
 
+function setEQPanelOpen(open) {
+  const panel = document.getElementById('eq-panel');
+  const btn = document.getElementById('btn-eq');
+  panel.classList.toggle('open', open);
+  panel.setAttribute('aria-hidden', String(!open));
+  btn.classList.toggle('active', open);
+  btn.setAttribute('aria-expanded', String(open));
+  if (!open) return;
+  requestAnimationFrame(() => {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+}
+
 // EQ toggle button
 document.getElementById('btn-eq').addEventListener('click', () => {
   const panel = document.getElementById('eq-panel');
-  const btn   = document.getElementById('btn-eq');
-  const isOpen = panel.classList.toggle('open');
-  panel.setAttribute('aria-hidden', String(!isOpen));
-  btn.classList.toggle('active', isOpen);
-  btn.setAttribute('aria-expanded', String(isOpen));
+  setEQPanelOpen(!panel.classList.contains('open'));
 });
 
 // Preset pills
