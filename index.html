@@ -648,14 +648,15 @@
 
     #eq-panel {
       width: 100%;
-      overflow: hidden;
+      overflow-y: auto;
       max-height: 0;
       opacity: 0;
       transition: max-height 0.32s ease, opacity 0.22s ease, margin-top 0.22s ease;
       margin-top: 0;
+      padding: 0 16px;
     }
     #eq-panel.open {
-      max-height: 400px;
+      max-height: 500px;
       opacity: 1;
       margin-top: 12px;
     }
@@ -803,7 +804,7 @@
         <button id="empty-add-btn">Add Music</button>
       </div>
       <ul id="track-list"></ul>
-      <div id="version-badge">v1.0 · Updated 29 Mar 2026</div>
+      <div id="version-badge">v1.0 · Updated <span id="version-timestamp">29 Mar 2026 · --:--</span></div>
     </div>
 
     <!-- Now Playing View -->
@@ -2036,6 +2037,15 @@ document.getElementById('eq-toggle-compressor').addEventListener('click', functi
   updateShuffleBtn();
   updateRepeatBtn();
   updatePlayPauseIcons();
+  
+  // Update version timestamp
+  const versionTimestamp = document.getElementById('version-timestamp');
+  if (versionTimestamp) {
+    const now = new Date();
+    const date = now.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    versionTimestamp.textContent = `${date} · ${time}`;
+  }
 })();
 
 // Suppress unused var warning for icon refs
