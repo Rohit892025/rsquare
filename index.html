@@ -1125,9 +1125,9 @@ function currentTrack() {
 // ══════════════════════════════════════════════════════════════════════════════
 // Web Audio API — Full enhancement chain + iOS AudioContext unlock
 // ══════════════════════════════════════════════════════════════════════════════
-let _audioCtx = null, _gainNode = null, _srcNode = null;
+let _audioCtx = null, _gainNode = null, _srcNode = null, _preampNode = null, _postFXNode = null;
 let _eqLow = null, _eqBass = null, _eqMid = null, _eqPresence = null, _eqAir = null;
-let _compressor = null;
+let _compressor = null, _compressorDryGain = null, _compressorWetGain = null;
 let _exciterLP = null, _exciterWS = null, _exciterGain = null;
 
 function _makeExciterCurve(amount) {
@@ -1139,10 +1139,18 @@ function _makeExciterCurve(amount) {
   return curve;
 }
 
+function _setAudioParam(param, value, timeConstant = 0.035) {
+  if (!param || !_audioCtx) return;
+  const now = _audioCtx.currentTime;
+  param.cancelScheduledValues(now);
+  param.setTargetAtTime(value, now, timeConstant);
+}
+
 function ensureAudioContext() {
   if (_audioCtx) { if (_audioCtx.state === 'suspended') _audioCtx.resume(); return; }
   try {
-    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    _audioCtx = new Ctx({ latencyHint: 'playback' });
 
     // EQ bands
     _eqLow = _audioCtx.createBiquadFilter();
@@ -1165,8 +1173,17 @@ function ensureAudioContext() {
     _compressor.threshold.value = -24; _compressor.knee.value = 30;
     _compressor.ratio.value = 4; _compressor.attack.value = 0.003; _compressor.release.value = 0.25;
 
-    // Master gain
-    _gainNode = _audioCtx.createGain(); _gainNode.gain.value = 0.8;
+    // Headroom + output routing
+    _preampNode = _audioCtx.createGain(); _preampNode.gain.value = 1;
+    _postFXNode = _audioCtx.createGain(); _postFXNode.gain.value = 1;
+    _compressorDryGain = _audioCtx.createGain(); _compressorDryGain.gain.value = 1;
+    _compressorWetGain = _audioCtx.createGain(); _compressorWetGain.gain.value = 0;
+
+    // Master gain follows the UI slider once processing is active
+    const volumeSlider = document.getElementById('volume-slider');
+    const initialVolume = volumeSlider ? Number(volumeSlider.value || 80) / 100 : 0.8;
+    _gainNode = _audioCtx.createGain(); _gainNode.gain.value = initialVolume;
+    state.audio.volume = 1;
 
     // Bass exciter parallel path
     _exciterLP = _audioCtx.createBiquadFilter();
@@ -1175,22 +1192,27 @@ function ensureAudioContext() {
     _exciterWS.curve = _makeExciterCurve(10); _exciterWS.oversample = '2x';
     _exciterGain = _audioCtx.createGain(); _exciterGain.gain.value = 0;
 
-    // Wire main chain: src → low → bass → mid → presence → air → compressor → gain → dest
+    // Wire main chain: src → preamp → low → bass → mid → presence → air → (dry || compressor) → postFX → gain → dest
     _srcNode = _audioCtx.createMediaElementSource(state.audio);
-    _srcNode.connect(_eqLow);
+    _srcNode.connect(_preampNode);
+    _preampNode.connect(_eqLow);
     _eqLow.connect(_eqBass);
     _eqBass.connect(_eqMid);
     _eqMid.connect(_eqPresence);
     _eqPresence.connect(_eqAir);
+    _eqAir.connect(_compressorDryGain);
+    _compressorDryGain.connect(_postFXNode);
     _eqAir.connect(_compressor);
-    _compressor.connect(_gainNode);
+    _compressor.connect(_compressorWetGain);
+    _compressorWetGain.connect(_postFXNode);
+    _postFXNode.connect(_gainNode);
     _gainNode.connect(_audioCtx.destination);
 
-    // Wire exciter parallel: src → LP → WaveShaper → exciterGain → gainNode
-    _srcNode.connect(_exciterLP);
+    // Wire exciter parallel: preamp → LP → WaveShaper → exciterGain → postFX
+    _preampNode.connect(_exciterLP);
     _exciterLP.connect(_exciterWS);
     _exciterWS.connect(_exciterGain);
-    _exciterGain.connect(_gainNode);
+    _exciterGain.connect(_postFXNode);
 
     // Apply stored EQ state immediately
     applyEQ(eqState);
@@ -1203,10 +1225,10 @@ function ensureAudioContext() {
 const EQ_STORAGE_KEY = 'rsquare-eq';
 const EQ_PRESETS = {
   flat:       { subBass:  0, bass:  0, mid:  0, presence:  0, air:  0, exciter: false, compressor: false },
-  bass:       { subBass:  6, bass:  4, mid:  0, presence:  0, air:  1, exciter: true,  compressor: true  },
-  headphones: { subBass:  3, bass:  1, mid: -1, presence:  2, air:  4, exciter: false, compressor: false },
-  vocal:      { subBass: -1, bass: -2, mid:  3, presence:  4, air:  2, exciter: false, compressor: true  },
-  punjabi:    { subBass:  5, bass:  4, mid:  0, presence:  2, air:  2, exciter: true,  compressor: true  },
+  bass:       { subBass:  3, bass:  2, mid: -0.5, presence:  0.5, air:  0.5, exciter: true,  compressor: true  },
+  headphones: { subBass:  1.5, bass:  0.5, mid:  0, presence:  1.5, air:  2, exciter: false, compressor: false },
+  vocal:      { subBass: -1, bass: -1, mid:  1.5, presence:  2.5, air:  1, exciter: false, compressor: true  },
+  punjabi:    { subBass:  2.5, bass:  1.5, mid:  0.5, presence:  1.5, air:  1.5, exciter: true,  compressor: true  },
 };
 let eqState = { preset: 'flat', subBass: 0, bass: 0, mid: 0, presence: 0, air: 0, exciter: false, compressor: false };
 
@@ -1236,20 +1258,20 @@ function saveEQState() {
 function applyEQ(s) {
   if (!_audioCtx || !_eqLow) return;
   const clamp = v => Math.max(-12, Math.min(12, v));
-  _eqLow.gain.value      = clamp(s.subBass);
-  _eqBass.gain.value     = clamp(s.bass);
-  _eqMid.gain.value      = clamp(s.mid);
-  _eqPresence.gain.value = clamp(s.presence);
-  _eqAir.gain.value      = clamp(s.air);
-  // Compressor bypass: disconnect-all + reconnect (iOS-safe — avoids targeted disconnect)
-  try { _eqAir.disconnect(); } catch (_) {}
-  if (s.compressor) {
-    _eqAir.connect(_compressor);
-    _compressor.connect(_gainNode);
-  } else {
-    _eqAir.connect(_gainNode);
-  }
-  _exciterGain.gain.value = s.exciter ? 0.25 : 0;
+  const boosts = [s.subBass, s.bass, s.mid, s.presence, s.air].map(v => Math.max(0, clamp(v)));
+  const maxBoost = Math.max(0, ...boosts);
+  const headroomDb = Math.min(8, maxBoost * 0.45 + (s.exciter ? 1.5 : 0) + (s.compressor ? 0.75 : 0));
+  const preamp = Math.pow(10, -headroomDb / 20);
+
+  _setAudioParam(_eqLow.gain, clamp(s.subBass));
+  _setAudioParam(_eqBass.gain, clamp(s.bass));
+  _setAudioParam(_eqMid.gain, clamp(s.mid));
+  _setAudioParam(_eqPresence.gain, clamp(s.presence));
+  _setAudioParam(_eqAir.gain, clamp(s.air));
+  _setAudioParam(_preampNode.gain, preamp, 0.05);
+  _setAudioParam(_compressorDryGain.gain, s.compressor ? 0 : 1, 0.02);
+  _setAudioParam(_compressorWetGain.gain, s.compressor ? 1 : 0, 0.02);
+  _setAudioParam(_exciterGain.gain, s.exciter ? 0.12 : 0, 0.04);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1365,6 +1387,7 @@ function loadTrack(queueIdx, autoplay) {
   state.currentQueueIdx = queueIdx;
   const track = currentTrack();
   if (!track) return;
+  if (autoplay) ensureAudioContext();
 
   // Revoke previous audio blob
   if (state.audioBlobURL) {
