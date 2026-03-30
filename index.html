@@ -629,10 +629,126 @@
       #now-playing-view { padding-bottom: 16px; }
     }
 
+    /* Version badge */
+    #version-badge {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text3);
+      padding: 16px 0 24px;
+      letter-spacing: 0.3px;
+    }
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
+
+    /* ── EQ Panel ─────────────────────────────────────────────────────────── */
+    #btn-eq.active { color: var(--accent); }
+
+    #eq-panel {
+      width: 100%;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.32s ease, opacity 0.22s ease, margin-top 0.22s ease;
+      margin-top: 0;
+    }
+    #eq-panel.open {
+      max-height: 400px;
+      opacity: 1;
+      margin-top: 12px;
+    }
+
+    #eq-presets {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+    .eq-preset-btn {
+      padding: 6px 14px;
+      border-radius: 50px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+      white-space: nowrap;
+    }
+    .eq-preset-btn:hover { background: var(--surface); color: var(--text); }
+    .eq-preset-btn.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .eq-sliders { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .eq-slider-row { display: flex; align-items: center; gap: 10px; }
+    .eq-label {
+      font-size: 12px;
+      color: var(--text2);
+      width: 62px;
+      flex-shrink: 0;
+      text-align: right;
+    }
+    .eq-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 3px;
+      border-radius: 3px;
+      background: var(--surface2);
+      outline: none;
+      cursor: pointer;
+    }
+    .eq-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+    .eq-slider::-moz-range-thumb {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+    }
+    .eq-val {
+      font-size: 11px;
+      color: var(--text3);
+      width: 30px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+
+    .eq-toggles { display: flex; gap: 8px; justify-content: center; }
+    .eq-toggle-btn {
+      padding: 7px 16px;
+      border-radius: 50px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+    .eq-toggle-btn:hover { background: var(--surface); color: var(--text); }
+    .eq-toggle-btn.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -687,6 +803,7 @@
         <button id="empty-add-btn">Add Music</button>
       </div>
       <ul id="track-list"></ul>
+      <div id="version-badge">v1.0 · Updated 29 Mar 2026</div>
     </div>
 
     <!-- Now Playing View -->
@@ -750,6 +867,15 @@
           </svg>
           <span id="repeat-badge">1</span>
         </button>
+        <button class="ctrl-btn ctrl-btn-sm" id="btn-eq" title="Equalizer" aria-label="Equalizer" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4"  y1="6"  x2="4"  y2="18"/>
+            <line x1="8"  y1="3"  x2="8"  y2="21"/>
+            <line x1="12" y1="7"  x2="12" y2="17"/>
+            <line x1="16" y1="4"  x2="16" y2="20"/>
+            <line x1="20" y1="8"  x2="20" y2="16"/>
+          </svg>
+        </button>
       </div>
 
       <div id="volume-row">
@@ -760,6 +886,48 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
         </svg>
+      </div>
+
+      <!-- EQ Panel -->
+      <div id="eq-panel" aria-hidden="true">
+        <div id="eq-presets">
+          <button class="eq-preset-btn active" data-preset="flat">Flat</button>
+          <button class="eq-preset-btn" data-preset="bass">Bass</button>
+          <button class="eq-preset-btn" data-preset="headphones">Headphones</button>
+          <button class="eq-preset-btn" data-preset="vocal">Vocal</button>
+          <button class="eq-preset-btn" data-preset="punjabi">Punjabi</button>
+        </div>
+        <div class="eq-sliders">
+          <div class="eq-slider-row">
+            <label class="eq-label">Sub Bass</label>
+            <input type="range" class="eq-slider" id="eq-subBass" min="-12" max="12" step="0.5" value="0">
+            <span class="eq-val" id="eq-val-subBass">0</span>
+          </div>
+          <div class="eq-slider-row">
+            <label class="eq-label">Bass</label>
+            <input type="range" class="eq-slider" id="eq-bass" min="-12" max="12" step="0.5" value="0">
+            <span class="eq-val" id="eq-val-bass">0</span>
+          </div>
+          <div class="eq-slider-row">
+            <label class="eq-label">Mid</label>
+            <input type="range" class="eq-slider" id="eq-mid" min="-12" max="12" step="0.5" value="0">
+            <span class="eq-val" id="eq-val-mid">0</span>
+          </div>
+          <div class="eq-slider-row">
+            <label class="eq-label">Presence</label>
+            <input type="range" class="eq-slider" id="eq-presence" min="-12" max="12" step="0.5" value="0">
+            <span class="eq-val" id="eq-val-presence">0</span>
+          </div>
+          <div class="eq-slider-row">
+            <label class="eq-label">Air</label>
+            <input type="range" class="eq-slider" id="eq-air" min="-12" max="12" step="0.5" value="0">
+            <span class="eq-val" id="eq-val-air">0</span>
+          </div>
+        </div>
+        <div class="eq-toggles">
+          <button class="eq-toggle-btn" id="eq-toggle-exciter" aria-pressed="false">Bass Exciter</button>
+          <button class="eq-toggle-btn" id="eq-toggle-compressor" aria-pressed="false">Compressor</button>
+        </div>
       </div>
     </div>
   </div>
@@ -910,30 +1078,133 @@ function currentTrack() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Web Audio API — GainNode for volume + iOS AudioContext unlock
+// Web Audio API — Full enhancement chain + iOS AudioContext unlock
 // ══════════════════════════════════════════════════════════════════════════════
-let _audioCtx  = null;
-let _gainNode  = null;
-let _srcNode   = null;
+let _audioCtx = null, _gainNode = null, _srcNode = null;
+let _eqLow = null, _eqBass = null, _eqMid = null, _eqPresence = null, _eqAir = null;
+let _compressor = null;
+let _exciterLP = null, _exciterWS = null, _exciterGain = null;
+
+function _makeExciterCurve(amount) {
+  const n = 256, curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = (Math.PI + amount) * x / (Math.PI + amount * Math.abs(x));
+  }
+  return curve;
+}
 
 function ensureAudioContext() {
-  if (_audioCtx) {
-    // Resume if suspended (iOS pauses context when app goes to background)
-    if (_audioCtx.state === 'suspended') _audioCtx.resume();
-    return;
-  }
+  if (_audioCtx) { if (_audioCtx.state === 'suspended') _audioCtx.resume(); return; }
   try {
     _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    _gainNode = _audioCtx.createGain();
-    _gainNode.gain.value = 0.8;
-    _gainNode.connect(_audioCtx.destination);
-    // Route the <audio> element through the gain node
+
+    // EQ bands
+    _eqLow = _audioCtx.createBiquadFilter();
+    _eqLow.type = 'lowshelf'; _eqLow.frequency.value = 60; _eqLow.gain.value = 0;
+
+    _eqBass = _audioCtx.createBiquadFilter();
+    _eqBass.type = 'peaking'; _eqBass.frequency.value = 200; _eqBass.Q.value = 1; _eqBass.gain.value = 0;
+
+    _eqMid = _audioCtx.createBiquadFilter();
+    _eqMid.type = 'peaking'; _eqMid.frequency.value = 1000; _eqMid.Q.value = 1; _eqMid.gain.value = 0;
+
+    _eqPresence = _audioCtx.createBiquadFilter();
+    _eqPresence.type = 'peaking'; _eqPresence.frequency.value = 4000; _eqPresence.Q.value = 1; _eqPresence.gain.value = 0;
+
+    _eqAir = _audioCtx.createBiquadFilter();
+    _eqAir.type = 'highshelf'; _eqAir.frequency.value = 12000; _eqAir.gain.value = 0;
+
+    // Dynamics compressor
+    _compressor = _audioCtx.createDynamicsCompressor();
+    _compressor.threshold.value = -24; _compressor.knee.value = 30;
+    _compressor.ratio.value = 4; _compressor.attack.value = 0.003; _compressor.release.value = 0.25;
+
+    // Master gain
+    _gainNode = _audioCtx.createGain(); _gainNode.gain.value = 0.8;
+
+    // Bass exciter parallel path
+    _exciterLP = _audioCtx.createBiquadFilter();
+    _exciterLP.type = 'lowpass'; _exciterLP.frequency.value = 120;
+    _exciterWS = _audioCtx.createWaveShaper();
+    _exciterWS.curve = _makeExciterCurve(10); _exciterWS.oversample = '2x';
+    _exciterGain = _audioCtx.createGain(); _exciterGain.gain.value = 0;
+
+    // Wire main chain: src → low → bass → mid → presence → air → compressor → gain → dest
     _srcNode = _audioCtx.createMediaElementSource(state.audio);
-    _srcNode.connect(_gainNode);
-  } catch (_) {
-    // Web Audio API unavailable — fall back to direct audio.volume
-    _audioCtx = null;
+    _srcNode.connect(_eqLow);
+    _eqLow.connect(_eqBass);
+    _eqBass.connect(_eqMid);
+    _eqMid.connect(_eqPresence);
+    _eqPresence.connect(_eqAir);
+    _eqAir.connect(_compressor);
+    _compressor.connect(_gainNode);
+    _gainNode.connect(_audioCtx.destination);
+
+    // Wire exciter parallel: src → LP → WaveShaper → exciterGain → gainNode
+    _srcNode.connect(_exciterLP);
+    _exciterLP.connect(_exciterWS);
+    _exciterWS.connect(_exciterGain);
+    _exciterGain.connect(_gainNode);
+
+    // Apply stored EQ state immediately
+    applyEQ(eqState);
+  } catch (_) { _audioCtx = null; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EQ — State, Presets, Apply
+// ══════════════════════════════════════════════════════════════════════════════
+const EQ_STORAGE_KEY = 'rsquare-eq';
+const EQ_PRESETS = {
+  flat:       { subBass:  0, bass:  0, mid:  0, presence:  0, air:  0, exciter: false, compressor: false },
+  bass:       { subBass:  6, bass:  4, mid:  0, presence:  0, air:  1, exciter: true,  compressor: true  },
+  headphones: { subBass:  3, bass:  1, mid: -1, presence:  2, air:  4, exciter: false, compressor: false },
+  vocal:      { subBass: -1, bass: -2, mid:  3, presence:  4, air:  2, exciter: false, compressor: true  },
+  punjabi:    { subBass:  5, bass:  4, mid:  0, presence:  2, air:  2, exciter: true,  compressor: true  },
+};
+let eqState = { preset: 'flat', subBass: 0, bass: 0, mid: 0, presence: 0, air: 0, exciter: false, compressor: false };
+
+function loadEQState() {
+  try {
+    const s = localStorage.getItem(EQ_STORAGE_KEY);
+    if (!s) return;
+    const p = JSON.parse(s);
+    if (typeof p !== 'object' || !p) return;
+    eqState = {
+      preset:     typeof p.preset     === 'string'  ? p.preset     : 'flat',
+      subBass:    typeof p.subBass    === 'number'  ? p.subBass    : 0,
+      bass:       typeof p.bass       === 'number'  ? p.bass       : 0,
+      mid:        typeof p.mid        === 'number'  ? p.mid        : 0,
+      presence:   typeof p.presence   === 'number'  ? p.presence   : 0,
+      air:        typeof p.air        === 'number'  ? p.air        : 0,
+      exciter:    typeof p.exciter    === 'boolean' ? p.exciter    : false,
+      compressor: typeof p.compressor === 'boolean' ? p.compressor : false,
+    };
+  } catch (_) {}
+}
+
+function saveEQState() {
+  try { localStorage.setItem(EQ_STORAGE_KEY, JSON.stringify(eqState)); } catch (_) {}
+}
+
+function applyEQ(s) {
+  if (!_audioCtx || !_eqLow) return;
+  const clamp = v => Math.max(-12, Math.min(12, v));
+  _eqLow.gain.value      = clamp(s.subBass);
+  _eqBass.gain.value     = clamp(s.bass);
+  _eqMid.gain.value      = clamp(s.mid);
+  _eqPresence.gain.value = clamp(s.presence);
+  _eqAir.gain.value      = clamp(s.air);
+  // Compressor bypass: disconnect-all + reconnect (iOS-safe — avoids targeted disconnect)
+  try { _eqAir.disconnect(); } catch (_) {}
+  if (s.compressor) {
+    _eqAir.connect(_compressor);
+    _compressor.connect(_gainNode);
+  } else {
+    _eqAir.connect(_gainNode);
   }
+  _exciterGain.gain.value = s.exciter ? 0.25 : 0;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1664,9 +1935,91 @@ document.addEventListener('keydown', e => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
+// EQ Panel — Event Handlers
+// ══════════════════════════════════════════════════════════════════════════════
+function syncEQUI() {
+  const bands = ['subBass', 'bass', 'mid', 'presence', 'air'];
+  bands.forEach(band => {
+    const slider = document.getElementById(`eq-${band}`);
+    const valEl  = document.getElementById(`eq-val-${band}`);
+    if (slider) slider.value = eqState[band];
+    if (valEl)  valEl.textContent = eqState[band] > 0 ? `+${eqState[band]}` : String(eqState[band]);
+  });
+  document.querySelectorAll('.eq-preset-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.preset === eqState.preset);
+  });
+  const excBtn  = document.getElementById('eq-toggle-exciter');
+  const compBtn = document.getElementById('eq-toggle-compressor');
+  excBtn.classList.toggle('active', eqState.exciter);
+  excBtn.setAttribute('aria-pressed', String(eqState.exciter));
+  compBtn.classList.toggle('active', eqState.compressor);
+  compBtn.setAttribute('aria-pressed', String(eqState.compressor));
+}
+
+// EQ toggle button
+document.getElementById('btn-eq').addEventListener('click', () => {
+  const panel = document.getElementById('eq-panel');
+  const btn   = document.getElementById('btn-eq');
+  const isOpen = panel.classList.toggle('open');
+  panel.setAttribute('aria-hidden', String(!isOpen));
+  btn.classList.toggle('active', isOpen);
+  btn.setAttribute('aria-expanded', String(isOpen));
+});
+
+// Preset pills
+document.getElementById('eq-presets').addEventListener('click', e => {
+  const btn = e.target.closest('.eq-preset-btn');
+  if (!btn || !EQ_PRESETS[btn.dataset.preset]) return;
+  Object.assign(eqState, EQ_PRESETS[btn.dataset.preset], { preset: btn.dataset.preset });
+  applyEQ(eqState);
+  saveEQState();
+  syncEQUI();
+});
+
+// Band sliders
+['subBass', 'bass', 'mid', 'presence', 'air'].forEach(band => {
+  const slider = document.getElementById(`eq-${band}`);
+  if (!slider) return;
+  slider.addEventListener('input', () => {
+    const val = parseFloat(slider.value);
+    eqState[band] = val;
+    eqState.preset = 'custom';
+    const valEl = document.getElementById(`eq-val-${band}`);
+    if (valEl) valEl.textContent = val > 0 ? `+${val}` : String(val);
+    document.querySelectorAll('.eq-preset-btn').forEach(b => b.classList.remove('active'));
+    applyEQ(eqState);
+    saveEQState();
+  });
+});
+
+// Toggle pills
+document.getElementById('eq-toggle-exciter').addEventListener('click', function() {
+  eqState.exciter = !eqState.exciter;
+  eqState.preset = 'custom';
+  this.classList.toggle('active', eqState.exciter);
+  this.setAttribute('aria-pressed', String(eqState.exciter));
+  document.querySelectorAll('.eq-preset-btn').forEach(b => b.classList.remove('active'));
+  applyEQ(eqState);
+  saveEQState();
+});
+document.getElementById('eq-toggle-compressor').addEventListener('click', function() {
+  eqState.compressor = !eqState.compressor;
+  eqState.preset = 'custom';
+  this.classList.toggle('active', eqState.compressor);
+  this.setAttribute('aria-pressed', String(eqState.compressor));
+  document.querySelectorAll('.eq-preset-btn').forEach(b => b.classList.remove('active'));
+  applyEQ(eqState);
+  saveEQState();
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Init — Load from IndexedDB
 // ══════════════════════════════════════════════════════════════════════════════
 (async function init() {
+  // Load persisted EQ before any audio interaction
+  loadEQState();
+  syncEQUI();
+
   try {
     const tracks = await getAllTracks();
     state.tracks = tracks;
